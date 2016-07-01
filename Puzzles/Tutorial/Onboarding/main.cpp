@@ -2,16 +2,43 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <ctime>
 
 using namespace std;
 
-/**
- * CodinGame planet is being attacked by slimy insectoid aliens.
- * <---
- * Hint:To protect the planet, you can implement the pseudo-code provided in the statement, below the player.
- **/
- 
-typedef struct Enemy{
+struct Timeout{
+    // Time at which the timeout is started
+    clock_t mStart;
+    // Value of the timeout in seconds
+    int mTimeout;
+    bool mStarted;
+
+    static const int TIME_UNDEFINED = -1;
+
+    Timeout(): Timeout(0) {}
+    Timeout(int timeout): mStart(0), mTimeout(timeout), mStarted(false) {}
+
+    bool start() {
+        if (!mStarted) mStart = clock();
+        mStarted = true;
+        return mStart != TIME_UNDEFINED;
+    }
+
+    bool hasTimedOut() {
+        if (mStarted) {
+            clock_t temp = clock();
+            int time_elapsed = (temp - mStart) / CLOCKS_PER_SEC;
+            bool timeoutReached = time_elapsed > mTimeout;
+            if(timeoutReached) {cerr << "Timeout reached" << endl;}
+            return timeoutReached;
+        } else {
+            cerr << "Timeout has not started yet" << endl;
+        }
+        return true;
+    }
+};
+
+struct Enemy{
     int mDistance;
     string mName;
     Enemy() : Enemy(0, "undefined") {}
@@ -25,8 +52,10 @@ typedef vector<Enemy> Threat;
 int main()
 {
     Threat threat = Threat(0);
+    Timeout loopTimeout = Timeout(40);
     // game loop
     while (1) {
+        loopTimeout.start();
         string enemy1; // name of enemy 1
         cin >> enemy1; cin.ignore();
         int dist1; // distance to enemy 1
@@ -39,17 +68,27 @@ int main()
         cin >> dist2; cin.ignore();
         threat.push_back(Enemy(dist2, enemy2));
 
-        // Write an action using cout. DON'T FORGET THE "<< endl"
-        // To debug: cerr << "Debug messages..." << endl;
+        // We have acquired the list of enemy
+        // We have to sort the list from the
+        // closest to far away
+        sort(threat.begin(), threat.end(),
+             [](const Enemy & a, const Enemy & b)
+             {
+                 // true will make the sort to let
+                 // the object in the same order
+                 return a.getDist() < b.getDist();
+             });
 
-        sort(threat.begin(), threat.end(), 
-            [](const Enemy & a, const Enemy & b)
-                { 
-                    return a.getDist() > b.getDist(); 
-                });
-        Enemy threatToEliminate = threat.back();
-        threat.pop_back();
-        // You have to output a correct ship name to shoot ("Buzz", enemy1, enemy2, ...)
+        // We acquire the enemy which is the closer,
+        // ie at the end of the list of threat
+        Enemy threatToEliminate = threat.front();
+        threat.erase(threat.begin());
+
+        // We output the enemy to kill
         cout << threatToEliminate.getName() << endl;
+
+        if(loopTimeout.hasTimedOut()) break;
     }
+
+    return EXIT_SUCCESS;
 }
